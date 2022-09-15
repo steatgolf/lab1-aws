@@ -1,9 +1,10 @@
 name: Build and Deploy
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch: {}
+  # push:
+  #   branches: [ main ]
+  # pull_request:
+  #   branches: [ main ]
 env:
     AWS_REGION: ap-southeast-1
 jobs:
@@ -15,8 +16,8 @@ jobs:
       contents: read
     steps:
      
-      - name: Checkout Repository
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        name: Checkout Repository
 
       - name: Set up Python 3.6
         uses: actions/setup-python@v2
@@ -38,15 +39,20 @@ jobs:
         run: python run.py & pytest
 
   Deploy:
+    name: Deploy to AWS
     runs-on: ubuntu-latest
+    needs: Build
     permissions:
       id-token: write
       contents: read
-    needs: [Build]
-    if: github.ref == 'refs/heads/main'
+
     steps:
+
+      - uses: actions/checkout@v2
+        name: Checkout Repository
+      
       - name: Configure AWS credentials
-      - uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v1
         with:
           role-to-assume: ${{ secrets.IAMROLE_GITHUB }}
           aws-region: ${{ env.AWS_REGION }}
@@ -56,7 +62,7 @@ jobs:
         run: |
           # Assuming the Deployment Group is already setup
           aws deploy create-deployment \
-            --application-name WebPython \
-            --deployment-group-name WebPythonGroup \
+            --application-name PythonWeb \
+            --deployment-group-name PythonWebGroup\
             --deployment-config-name CodeDeployDefault.OneAtATime \
             --github-location repository=${{ github.repository }},commitId=${{ github.sha }}
